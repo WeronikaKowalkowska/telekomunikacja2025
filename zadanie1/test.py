@@ -2,6 +2,16 @@ import random
 
 import numpy as np
 
+H_matrix=np.array([
+    [1,1,1,1,0,0,0,0,1,0,0,0,0,0,0,0],
+    [1,1,0,0,1,1,0,0,0,1,0,0,0,0,0,0],
+    [1,0,1,0,1,0,1,0,0,0,1,0,0,0,0,0],
+    [0,1,0,1,0,1,1,0,0,0,0,1,0,0,0,0],
+    [1,1,1,0,1,0,0,1,0,0,0,0,1,0,0,0],
+    [1,0,0,1,0,1,0,1,0,0,0,0,0,1,0,0],
+    [0,1,1,1,1,0,1,1,0,0,0,0,0,0,1,0],
+    [1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,1]
+],dtype=int) #8x16
 
 def encoding(message):
     even_bits_in_message = []
@@ -68,11 +78,53 @@ def destroy_bits(message):  # message to ciąg bitów
 
     return False'''
 
+def verify_integrity(message):
+    all_signs=[]
+    for i in range(len(message)):
+        sign=format(ord(message[i]), '08b')
+        syndrome=multiply(sign)%2
+        h_transposition=np.transpose(H_matrix)
+        index=None;
+        #multiply(sign)
+        print("Syndrome:",syndrome)
+        if syndrome!=0:
+            #zidentyfikuj błędny bit (porównaj z kolumnami h)
+            #test = True
+            for i in range(16):
+                test=True
+                for j in range(8):
+                    if h_transposition[i][j] != syndrome[j]:
+                        test=False
+                if test==True:
+                    index=i
+            if(index!=None):
+                #znaleziono ktory bit jest bledny -> napraw bit (zmien bit )
+                sign[index]^=1
+        all_signs.append(sign)
+    return all_signs
+
+
+
+
+
+def multiply(sign):
+    '''print(sign)
+    sign=np.transpose(sign)  #chyba nie ma zadnego efektu na wektor
+    print(sign)
+    print("\n")'''
+    result=[[0] * 16 for _ in range(8)]
+    for col in range(16):
+        for row in range(8):
+            result[row][col] = H_matrix[row][col] * sign[row]
+    #result = np.dot(H_matrix, sign)
+    return result
+
 all_signs=[]
 even_bits_in_message=[]
 all_signs,even_bits_in_message=encoding("hejka")
 print(all_signs)
 print("\n")
 bit_list = [int(bit) for char in "hejka" for bit in format(ord(char), '08b')]
-print(destroy_bits(bit_list))
+#print(destroy_bits(bit_list))
+verify_integrity("hejka")
 
