@@ -1,64 +1,124 @@
+import random
 
 import numpy as np
 
+H_matrix = np.array([
+        [1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0],
+        [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
+        [0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+        [1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1]
+    ], dtype=int)  # 8x16
+
 def encoding(message):
-    bit_list = [int(bit) for char in message for bit in format(ord(char), '08b')]  #konwertuje całą wiadomość na 8-bitowy zapis binarny
 
-    #mnożymy macierz H przez wektor bit_list -> bity parzystości
-    #result = [sum(A[i][j] * v[j] for j in range(len(v))) for i in range(len(A))]
-    if len(bit_list) % 16 != 0:
-        bit_list += [0] * (16 - (len(bit_list) % 16))
+    I_8 = np.eye(8, dtype=int)  #macierz jednostkowa 8x8
+    P = H_matrix[:, :8].T  #pierwsze 8 kolumn H, transponowane
 
-    result = []
-    for i in range(0, len(bit_list), 16):  # podział na bloki po 16 bitów
-        block = bit_list[i:i + 16]
-        even_bits_list = np.dot(H_matrix, block) % 2
-        result.extend(even_bits_list)
-    #dodanie bity danych i parzystości w jednej tablicy wynikowej
-    #result = [bit_list, even_bits_list]
-        # #znajdź bity parzyste
-        # if (pow(2,i))%2==0:
-        #     #check_enen_bits(i)
-        # else:
+    G_matrix = np.hstack((I_8, P))  #połączenie macierzy I_8 i P -> wynik to macierz do kodowania
 
-    return result
+    bit_list = [int(bit) for char in message for bit in format(ord(char), '08b')] #znak w wiadomości jest zamieniany na jego 8-bitowy zapis binarny
 
-# def check_even_bits(position, message):
-#
-#     index=0
-#     while index<len(message):
-#         for i in range (position-1):
-#             index+=1
-#         for i in range (position):
-#             #sprawdź parzystość
-#
-#
-#
-#     return 0
+    encoded = np.dot(bit_list, G_matrix) % 2 #mnożenie wektora i macierzy
 
-def decoding(encoded_message):
-    encoded_text=0
-    for i in range(encoded_message.size()):
-        encoded_text+=bytes(encoded_message[i], encoding='utf-8')
-    return encoded_text
+    return encoded    #zwracenie wyniku jak jednowymiarowej tablicy
 
-# def verify_integrity(encoded_message, H_matrix):
-#     for i in range(message.size()):
-#         syndrome=(H_matrix*)
-#     return 0
+def destroy_bits(message):  #message to ciąg bitów
+    howMuch = int(input("How much bits do you want to destroy? "))
+    message_copy = message.copy()
 
-H_matrix=np.array([
-    [1,1,1,1,0,0,0,0,1,0,0,0,0,0,0,0],
-    [1,1,0,0,1,1,0,0,0,1,0,0,0,0,0,0],
-    [1,0,1,0,1,0,1,0,0,0,1,0,0,0,0,0],
-    [0,1,0,1,0,1,1,0,0,0,0,1,0,0,0,0],
-    [1,1,1,0,1,0,0,1,0,0,0,0,1,0,0,0],
-    [1,0,0,1,0,1,0,1,0,0,0,0,0,1,0,0],
-    [0,1,1,1,1,0,1,1,0,0,0,0,0,0,1,0],
-    [1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,1]
-],dtype=int) #8x16
+    if howMuch > len(message):
+        print("Too many bits selected!")
+        return message
+
+    option = input("Choose '1' for randomised indexing and '2' for static indexing (random is default): ")
+    index = []
+
+    if option == '2':
+        for i in range(howMuch):
+            test = True
+            while test:
+                input_index = int(input("Choose which bit you want to destroy: "))
+                if input_index in index:
+                    print("You've already destroyed this bit. Choose another one.")
+                elif 0 <= input_index < len(message):  #sprawdzenie zakresu indeksu
+                    test = False
+                else:
+                    print("Index out of range! Try again.")
+            index.append(input_index)
+    else:
+        while len(index) < howMuch:
+            random_index = random.randrange(0, len(message))
+            if random_index not in index:
+                index.append(random_index)
+
+    #zamień wybrane bity na przeciwne
+    for i in index:
+        message_copy[i] ^= 1 #XOR z 1 zmienia bit na przeciwny
+
+    return message_copy,howMuch
+
+def find_error_bit(syndrome, H_matrix):
+    if np.array_equal(syndrome, np.zeros(H_matrix.shape[0], dtype=int)):
+        return None
+
+        # Sprawdzenie pojedynczego błędu
+    for index, column in enumerate(H_matrix.T):
+        if np.array_equal(syndrome, column):
+            return [index]  # Zwracamy listę z jednym indeksem
+
+        # Sprawdzenie kombinacji dwóch błędów
+    for i in range(H_matrix.shape[1]):
+        for j in range(i + 1, H_matrix.shape[1]):
+            if np.array_equal(syndrome, (H_matrix[:, i] + H_matrix[:, j]) % 2):
+                return [i, j]  # Zwracamy indeksy dwóch błędnych bitów
+
+def check_if_correct(message,howMuch):
+
+    for i in range(howMuch):
+        message=check_again(message)
 
 
-text= input("Set text to encode: ")
-print(encoding(text))
-print(len(encoding(text)))
+    return message
+
+def check_again(message):
+    syndrome = (np.dot(H_matrix, message.T) % 2).flatten()
+
+    print(f"Syndrom: {syndrome}")
+
+    error_bit = find_error_bit(syndrome, H_matrix)
+
+    if error_bit is not None:
+        print(f"Błąd w bicie o indeksie: {error_bit}")
+        # naprawienie bitu
+        message[error_bit] ^= 1  # XOR z 1 zmienia bit na przeciwny
+    else:
+        print("Brak błędu lub nierozpoznany syndrom.")
+    return message
+
+
+def is_correct(original_message, corrected_message):
+    original_message = list(original_message)
+    corrected_message = list(corrected_message)
+    for i in range(len(original_message)):
+        if original_message[i] != corrected_message[i]:
+            return False
+    return True
+
+text = "j"
+encoded_text = encoding(text)
+print("Encoded text:")
+print(encoded_text)
+print("\n")
+destroyed_text,howMuch = destroy_bits(encoded_text)
+print("Destroyed text:")
+print(destroyed_text)
+print("\n")
+corrected_text = check_if_correct(destroyed_text,howMuch)
+print("Corrected text:")
+print(corrected_text)
+print("Is correct:")
+print(is_correct(encoded_text, corrected_text))

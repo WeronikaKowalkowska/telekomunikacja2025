@@ -103,20 +103,11 @@ def verify_integrity(message):
         all_signs.append(sign)
     return all_signs
 
-
-
-
-
 def multiply(sign):
-    '''print(sign)
-    sign=np.transpose(sign)  #chyba nie ma zadnego efektu na wektor
-    print(sign)
-    print("\n")'''
     result=[[0] * 16 for _ in range(8)]
     for col in range(16):
         for row in range(8):
             result[row][col] = H_matrix[row][col] * sign[row]
-    #result = np.dot(H_matrix, sign)
     return result
 
 all_signs=[]
@@ -125,6 +116,5 @@ all_signs,even_bits_in_message=encoding("hejka")
 print(all_signs)
 print("\n")
 bit_list = [int(bit) for char in "hejka" for bit in format(ord(char), '08b')]
-#print(destroy_bits(bit_list))
 verify_integrity("hejka")
 
