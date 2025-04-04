@@ -84,10 +84,11 @@ def find_error_bit(syndrome):
 def check_if_correct(message):
     bit_numeration_for_error = 0  #globalna zmienna dla całego teksu a nie tylko bloku
 
-    message = np.array(message).reshape(-1, 16)  #przekształcamy tablicę w macierz bitów po 16
+    message = np.array(message).reshape(-1, 16)  #przekształcamy tablicę w macierz bitów po 16, bo "słowo danych" ma 8 bitów, ale po zakodowaniu powstaje blok 16-bitowy
 
     for row in message:
-        syndrome = (np.dot(H_matrix, row) % 2).flatten()
+        syndrome = np.dot(H_matrix, row.T) % 2  #row jest wektorem poziomym, a chcemy mieć pionowy dlatego jest transponowany
+
         error_bit = find_error_bit(syndrome)
         global_bit_index = []
 
@@ -98,7 +99,7 @@ def check_if_correct(message):
             else:
                 global_bit_index.append(error_bit[0] + bit_numeration_for_error)
             print(f"Error in bit at index: {global_bit_index}")
-            # naprawienie bitu
+            #naprawienie bitu
             row[error_bit] ^= 1  #XOR z 1 zmienia bit na przeciwny
 
         bit_numeration_for_error += 16
