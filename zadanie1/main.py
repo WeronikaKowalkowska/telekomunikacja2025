@@ -113,15 +113,45 @@ def is_correct(original_message, corrected_message):
     return original_message == corrected_message
 
 
+save_encoded_text=""
 def choose_operation():
     print("Choose operation type: (default is encoding)")
     print("a) encoding: ")
     print("b) decoding: ")
     operation_choice = input("Choose operation: ")
     if operation_choice == 'b':
-        choose_input()
+        input_data=choose_input()
+        corrected_text = check_if_correct(input_data)
+        print("Text corrected succesfully. Press 'a' if you want to display encoded text and any other key to go back: ")
+        corrected_choice = input()
+        if corrected_choice == 'a':
+            print(corrected_text)
+        else:
+            return None
     else:
-        choose_input()
+        input_data=choose_input()
+        encoded_text = encoding(input_data)
+        destroyed_text = destroy_bits(encoded_text)
+        print("Text encoded succesfully. Press 'a' if you want to display encoded text, 'b' if you want to save encoded text into 'encoded_input.txt', "
+              "\n'c' if you want to save encoded text into app memmory and 'd' if you want to decode encoded text ")
+        encoded_choice=input()
+        if encoded_choice.__contains__('a'):
+            print(destroyed_text)
+        if encoded_choice.__contains__('b'):
+            with open('encoded_input.txt', 'w') as file:
+                file.write(destroyed_text)
+        if encoded_choice.__contains__('c'):
+            save_encoded_text=destroyed_text
+        if encoded_choice.__contains__('d'):
+            corrected_text = check_if_correct(destroyed_text)
+            print("Text corrected succesfully. Press 'a' if you want to display encoded text and any other key to go back: " )
+            corrected_choice=input()
+            if corrected_choice=='a':
+                print(corrected_text)
+            else:
+                return None
+        else:
+            return None
 
 
 
@@ -130,32 +160,43 @@ def choose_input():
     print("a) text file: ")
     print("b) direct text: ")
     input_choice = input("Choose input: ")
+    input_data=""
     if input_choice == 'a':
         print("Choose file: ")
         print("a) plain_file.txt")
         print("b) encoded_file.txt")
-
         test=True
         while test:
             choice = input("Your choice: ")
             if(choice == 'a'):
-
-
-
+                input_data=read_file("plain_file.txt")
+                test=False
+            elif choice == 'b':
+                input_data=read_file("encoded_file.txt")
+                test=False
+            else:
+                print("Incorrect choice. :( Please try again later: ")
     else:
-        text=input("Your text:")
+        input_data=input("Your text:")
+    return input_data
+
+def read_file(file_name):
+    with open(file_name, 'r') as file:
+        data = file.read()
+    return data
 
 
-text = "hello"
-encoded_text = encoding(text)
-print("Encoded text:")
-print(encoded_text)
-print("\n")
-destroyed_text = destroy_bits(encoded_text)
-print("Destroyed text:")
-print(destroyed_text)
-print("\n")
-corrected_text = check_if_correct(destroyed_text)
-print("Corrected text:")
-print(corrected_text)
-print("Is correct:", is_correct(encoded_text, corrected_text))
+# text = "hello"
+# encoded_text = encoding(text)
+# print("Encoded text:")
+# print(encoded_text)
+# print("\n")
+# destroyed_text = destroy_bits(encoded_text)
+# print("Destroyed text:")
+# print(destroyed_text)
+# print("\n")
+# corrected_text = check_if_correct(destroyed_text)
+# print("Corrected text:")
+# print(corrected_text)
+# print("Is correct:", is_correct(encoded_text, corrected_text))
+choose_operation()
