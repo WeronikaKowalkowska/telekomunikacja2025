@@ -59,9 +59,9 @@ def destroy_bits(message):  #message to ciąg bitów
     for i in index:
         message_copy[i] ^= 1 #XOR z 1 zmienia bit na przeciwny
 
-    return message_copy,howMuch
+    return message_copy
 
-def find_error_bit(syndrome, H_matrix):
+def find_error_bit(syndrome):
     if np.array_equal(syndrome, np.zeros(H_matrix.shape[0], dtype=int)):
         return None
 
@@ -76,12 +76,8 @@ def find_error_bit(syndrome, H_matrix):
             if np.array_equal(syndrome, (H_matrix[:, i] + H_matrix[:, j]) % 2):
                 return [i, j]  # Zwracamy indeksy dwóch błędnych bitów
 
-def check_if_correct(message,howMuch):
-
-    for i in range(howMuch):
-        message=check_again(message)
-
-
+def check_if_correct(message):
+    message=check_again(message)
     return message
 
 def check_again(message):
@@ -89,7 +85,7 @@ def check_again(message):
 
     print(f"Syndrom: {syndrome}")
 
-    error_bit = find_error_bit(syndrome, H_matrix)
+    error_bit = find_error_bit(syndrome)
 
     if error_bit is not None:
         print(f"Błąd w bicie o indeksie: {error_bit}")
@@ -108,16 +104,49 @@ def is_correct(original_message, corrected_message):
             return False
     return True
 
+def choose_operation():
+    print("Choose operation type: (default is encoding)")
+    print("a) encoding: ")
+    print("b) decoding: ")
+    operation_choice = input("Choose operation: ")
+    if operation_choice == 'b':
+        choose_input()
+    else:
+        choose_input()
+
+
+
+def choose_input():
+    print("Choose input type: (default is direct text)")
+    print("a) text file: ")
+    print("b) direct text: ")
+    input_choice = input("Choose input: ")
+    if input_choice == 'a':
+        print("Choose file: ")
+        print("a) plain_file.txt")
+        print("b) encoded_file.txt")
+
+        test=True
+        while test:
+            choice = input("Your choice: ")
+            if(choice == 'a'):
+
+
+
+    else:
+        text=input("Your text:")
+
+
 text = "j"
 encoded_text = encoding(text)
 print("Encoded text:")
 print(encoded_text)
 print("\n")
-destroyed_text,howMuch = destroy_bits(encoded_text)
+destroyed_text = destroy_bits(encoded_text)
 print("Destroyed text:")
 print(destroyed_text)
 print("\n")
-corrected_text = check_if_correct(destroyed_text,howMuch)
+corrected_text = check_if_correct(destroyed_text)
 print("Corrected text:")
 print(corrected_text)
 print("Is correct:")
