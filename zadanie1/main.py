@@ -112,7 +112,6 @@ def is_correct(original_message, corrected_message):
     corrected_message = list(corrected_message)
     return original_message == corrected_message
 
-
 save_encoded_text=""
 def choose_operation():
     print("Choose operation type: (default is encoding)")
@@ -120,7 +119,7 @@ def choose_operation():
     print("b) decoding: ")
     operation_choice = input("Choose operation: ")
     if operation_choice == 'b':
-        input_data=choose_input()
+        input_data=choose_input(False)
         corrected_text = check_if_correct(input_data)
         print("Text corrected succesfully. Press 'a' if you want to display encoded text and any other key to go back: ")
         corrected_choice = input()
@@ -129,17 +128,18 @@ def choose_operation():
         else:
             return None
     else:
-        input_data=choose_input()
+        input_data=choose_input(True)
         encoded_text = encoding(input_data)
+        print("Your encoded text is: ", encoded_text)
         destroyed_text = destroy_bits(encoded_text)
-        print("Text encoded succesfully. Press 'a' if you want to display encoded text, 'b' if you want to save encoded text into 'encoded_input.txt', "
+        print("Text encoded succesfully. Press 'a' if you want to display encoded text, 'b' if you want to save encoded text into 'encoded_file.txt', "
               "\n'c' if you want to save encoded text into app memmory and 'd' if you want to decode encoded text ")
         encoded_choice=input()
         if encoded_choice.__contains__('a'):
             print(destroyed_text)
         if encoded_choice.__contains__('b'):
-            with open('encoded_input.txt', 'w') as file:
-                file.write(destroyed_text)
+            with open('encoded_file.txt', 'w') as file:
+                file.write(np.array_str(destroyed_text))
         if encoded_choice.__contains__('c'):
             save_encoded_text=destroyed_text
         if encoded_choice.__contains__('d'):
@@ -155,27 +155,21 @@ def choose_operation():
 
 
 
-def choose_input():
+def choose_input(is_encoding):
     print("Choose input type: (default is direct text)")
     print("a) text file: ")
     print("b) direct text: ")
     input_choice = input("Choose input: ")
-    input_data=""
+    input_data = " "
     if input_choice == 'a':
-        print("Choose file: ")
-        print("a) plain_file.txt")
-        print("b) encoded_file.txt")
-        test=True
-        while test:
-            choice = input("Your choice: ")
-            if(choice == 'a'):
-                input_data=read_file("plain_file.txt")
-                test=False
-            elif choice == 'b':
-                input_data=read_file("encoded_file.txt")
-                test=False
-            else:
-                print("Incorrect choice. :( Please try again later: ")
+        if is_encoding:
+            input_data=read_file("plain_file.txt")
+        else:
+            input_data=read_file("encoded_file.txt")
+            input_data = [int(x.strip()) for x in input_data if x.strip() != '']    #usuawanie sparcji
+            input_data = np.array([int(x) for x in input_data], dtype=int)      #konwersja elementów na int-y
+            input_data_table = input_data.reshape(-1, 16)           #podział na 16 bitowe bloki
+            input_data = input_data_table
     else:
         input_data=input("Your text:")
     return input_data
@@ -183,20 +177,7 @@ def choose_input():
 def read_file(file_name):
     with open(file_name, 'r') as file:
         data = file.read()
-    return data
+        data = data.replace('[', '').replace(']', '')   #zastępowanie znaków '[', ']' spacjami
+    return np.array(list(data))
 
-
-# text = "hello"
-# encoded_text = encoding(text)
-# print("Encoded text:")
-# print(encoded_text)
-# print("\n")
-# destroyed_text = destroy_bits(encoded_text)
-# print("Destroyed text:")
-# print(destroyed_text)
-# print("\n")
-# corrected_text = check_if_correct(destroyed_text)
-# print("Corrected text:")
-# print(corrected_text)
-# print("Is correct:", is_correct(encoded_text, corrected_text))
 choose_operation()
