@@ -106,11 +106,22 @@ def check_if_correct(message):
 
     return message.flatten()
 
+#bity parzystości to ostatnie 8 bitów w zakodowanym ciągu
+def remove_parity_bits(corrected_bits):
+    return corrected_bits[:8]
 
-def is_correct(original_message, corrected_message):
-    original_message = list(original_message)
-    corrected_message = list(corrected_message)
-    return original_message == corrected_message
+def corrected_to_text(encoded_bits):
+    encoded_array = np.array(encoded_bits).reshape(-1, 16)
+    decoded_message = []
+
+    for row in encoded_array:
+        #usunięcie bitów parzystości z segmentu
+        data_bits = remove_parity_bits(row)
+        #zamiana segmentu na znak ASCII
+        byte_str = ''.join(map(str, data_bits))
+        decoded_message.append(chr(int(byte_str, 2)))
+
+    return ''.join(decoded_message)
 
 save_encoded_text=""
 def choose_operation():
@@ -124,7 +135,7 @@ def choose_operation():
         print("Text corrected succesfully. Press 'a' if you want to display encoded text and any other key to go back: ")
         corrected_choice = input()
         if corrected_choice == 'a':
-            print(corrected_text)
+            print("Your decoded text is: ", corrected_to_text(corrected_text))
         else:
             return None
     else:
@@ -132,28 +143,27 @@ def choose_operation():
         encoded_text = encoding(input_data)
         print("Your encoded text is: ", encoded_text)
         destroyed_text = destroy_bits(encoded_text)
-        print("Text encoded succesfully. Press 'a' if you want to display encoded text, 'b' if you want to save encoded text into 'encoded_file.txt', "
+        print("Text encoded succesfully. Press 'a' if you want to display encoded and destroyed text, 'b' if you want to save encoded text into 'encoded_file.txt', "
               "\n'c' if you want to save encoded text into app memmory and 'd' if you want to decode encoded text ")
         encoded_choice=input()
         if encoded_choice.__contains__('a'):
-            print(destroyed_text)
+            print("Your destroyed text is: ", destroyed_text)
         if encoded_choice.__contains__('b'):
             with open('encoded_file.txt', 'w') as file:
                 file.write(np.array_str(destroyed_text))
         if encoded_choice.__contains__('c'):
             save_encoded_text=destroyed_text
         if encoded_choice.__contains__('d'):
+            print("Your destroyed text is: ", destroyed_text)
             corrected_text = check_if_correct(destroyed_text)
             print("Text corrected succesfully. Press 'a' if you want to display encoded text and any other key to go back: " )
             corrected_choice=input()
             if corrected_choice=='a':
-                print(corrected_text)
+                print("Your decoded text is: ", corrected_to_text(corrected_text))
             else:
                 return None
         else:
             return None
-
-
 
 def choose_input(is_encoding):
     print("Choose input type: (default is direct text)")

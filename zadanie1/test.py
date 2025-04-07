@@ -147,18 +147,9 @@ def encoding(message):
 
     return encoded.flatten()    #zwracenie wyniku jak jednowymiarowej tablicy
 
-
+#bity parzystości to ostatnie 8 bitów w zakodowanym ciągu
 def remove_parity_bits(corrected_bits):
-    #bity parzystości są na pozycjach potęg dwójki: 1, 2, 4, 8 (indeksowane od 1, więc od 0 to będą 0, 1, 3, 7)
-    parity_positions = [0, 1, 3, 7, 15]
-    #usuń bity parzystości
-    new_bits = []
-    for i in range(len(corrected_bits)):
-        if i not in parity_positions:
-            new_bits.append(corrected_bits[i])
-        else:
-            print(f"Usuwamy bit parzystości na pozycji {i}: {corrected_bits[i]}")
-    return new_bits
+    return corrected_bits[:8]
 
 def corrected_to_text(encoded_bits):
     encoded_array = np.array(encoded_bits).reshape(-1, 16)
