@@ -139,7 +139,19 @@ def choose_operation():
         input_data=choose_input(True)
         encoded_text = encoding(input_data)
         print("Your encoded text is: ", encoded_text)
-        destroyed_text = destroy_bits(encoded_text)
+        print("Press 'a' if you want to save the encoded text into 'encoded_bits.txt' and 'b' if you want to destroy bits using program: (default is using program option)")
+        if_save=input()
+        if if_save == 'a':
+            with open('encoded_bits.txt', 'w') as file:
+                file.write(np.array_str(encoded_text))
+            with open('encoded_bits.txt', 'r') as file:
+                destroyed_text = file.read()
+                destroyed_text = destroyed_text.strip("[] \n")  # usuń nawiasy i spacje
+                destroyed_text = list(map(int, destroyed_text.split()))
+                destroyed_text = np.array(destroyed_text)
+        else:
+            destroyed_text = destroy_bits(encoded_text)
+
         print("Text encoded succesfully. Press 'a' if you want to display encoded / destroyed text, 'b' if you want to save encoded text into 'encoded_file.txt', "
               "\n'c' if you want to save encoded text into app memmory and 'd' if you want to decode encoded text ")
         encoded_choice=input()
@@ -171,13 +183,18 @@ def choose_input(is_encoding):
         if is_encoding:
             input_data=read_file("plain_file.txt")
         else:
-            input_data=read_file("encoded_file.txt")
+            print("Which file do you want to read? a) 'encoded_file.txt'  b) 'encoded_bits.txt'   (default is 'encoded_file.txt')")
+            option=input()
+            if option == 'b':
+                input_data = read_file("encoded_bits.txt")
+            else:
+                input_data=read_file("encoded_file.txt")
             input_data = [int(x.strip()) for x in input_data if x.strip() != '']    #usuawanie sparcji
             input_data = np.array([int(x) for x in input_data], dtype=int)      #konwersja elementów na int-y
             input_data_table = input_data.reshape(-1, 16)           #podział na 16 bitowe bloki
             input_data = input_data_table
     else:
-        input_data=input("Your text:")
+        input_data=input("Your text: ")
     return input_data
 
 def read_file(file_name):
