@@ -22,12 +22,9 @@ def encoding(message):
 
     bit_list = [int(bit) for char in message for bit in format(ord(char), '08b')] #znak w wiadomości jest zamieniany na jego 8-bitowy zapis binarny
 
-    while len(bit_list) % 8 != 0:  #jeżeli liczba bitów nie wielokrotność 8 to dodajemy zera
-        bit_list.append(0)
-
     bit_array = np.array(bit_list).reshape(-1, 8)  #przekształcamy tablicę w macierz bitów po 8
 
-    encoded = np.dot(bit_array, G_matrix) % 2 #mnożenie wektora i macierzy
+    encoded = np.dot(bit_array, G_matrix) % 2   #mnożenie wektora i macierzy
 
     return encoded.flatten()    #zwracenie wyniku jak jednowymiarowej tablicy
 
@@ -143,7 +140,7 @@ def choose_operation():
         encoded_text = encoding(input_data)
         print("Your encoded text is: ", encoded_text)
         destroyed_text = destroy_bits(encoded_text)
-        print("Text encoded succesfully. Press 'a' if you want to display encoded and destroyed text, 'b' if you want to save encoded text into 'encoded_file.txt', "
+        print("Text encoded succesfully. Press 'a' if you want to display encoded / destroyed text, 'b' if you want to save encoded text into 'encoded_file.txt', "
               "\n'c' if you want to save encoded text into app memmory and 'd' if you want to decode encoded text ")
         encoded_choice=input()
         if encoded_choice.__contains__('a'):
@@ -154,9 +151,8 @@ def choose_operation():
         if encoded_choice.__contains__('c'):
             save_encoded_text=destroyed_text
         if encoded_choice.__contains__('d'):
-            print("Your destroyed text is: ", destroyed_text)
             corrected_text = check_if_correct(destroyed_text)
-            print("Text corrected succesfully. Press 'a' if you want to display encoded text and any other key to go back: " )
+            print("Text corrected succesfully. Press 'a' if you want to display encoded text and any other key to exit: " )
             corrected_choice=input()
             if corrected_choice=='a':
                 print("Your decoded text is: ", corrected_to_text(corrected_text))
