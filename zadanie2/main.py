@@ -1,167 +1,113 @@
 import numpy as np
-import serial
 
-SOH = 0x01
-EOT = 0x04
-ACK = 0x06
-NAK = 0x15
-C = 0x43  # ASCII 'C'
-
-BLOCK_SIZE = 128
-
-
+# metoda do liczenia sumy kontrolnej CRC-16 z generatorem 0x1021 (2 bajty) - jeżeli odbiornik wyśle 'C'
 def calculate_crc(data: bytes) -> int:
     crc = 0
     for byte in data:
-        crc ^= byte << 8
-        for _ in range(8):
-            if crc & 0x8000:
-                crc = (crc << 1) ^ 0x1021
+        crc ^= byte << 8  # bajt z najwyższych 8 bitów
+        for _ in range(8):  # iteracja po bitach
+            if crc & 0x8000:  # jeżeli najwyższy bit CRC to 1
+                crc = (crc << 1) ^ 0x1021  # przesunięcie i XOR z generatorem
             else:
-                crc <<= 1
-            crc &= 0xFFFF  # Utrzymanie 16-bitowego wyniku
+                crc <<= 1  # przesunięcie
+            crc &= 0xFFFF  # utrzymanie 16-bitowego wyniku
     return crc
 
+# metoda obliczająca algebraiczną sumę kontrolną (1 bajt) - jeżeli odbiornik wyśle 'NAK'
+def calculate_checksum(data):
+    return sum(data) % 256
 
-def send_file(ser):
+# funkcja nadajnika
+def send_file():
     print("Opening 'file_to_read.txt'")
     with open("file_to_read.txt", 'r') as file:
         data = file.read()
-
-    blockNumber = 1
+    blockFromFile = []
+    blockNumber = 0 # liczymy od zera, ponieważ metoda divide_to_blocks() zwiększa licznik
 
     # CZEKAJ aż odbiornik wyśle 'C' (oznacza żądanie transmisji z CRC)
-    wait = ser.read()
-    if wait == 'C':
 
-        while data is not None:  # DOPÓKI są dane do wysłania:
-            '''
-            CZYTAJ 128 bajtów z pliku
-            JEŚLI mniej niż 128 bajtów:
-                DOPEŁNIJ bajtami 0x1A (znak EOF)
-            '''
-            blockFromFile = []
-            blockFromFile, data, blockNumber = divide_to_blocks(data, blockNumber)
-            if len(blockFromFile) < 128:
-                missingLength = 128 - len(blockFromFile)
-                for i in range(missingLength):
-                    blockFromFile.append(0x1A)
-            '''
-            POLICZ CRC dla danych
-            UTWÓRZ blok:
-                SOH (0x01)
-                numer bloku
-                dopełnienie numeru bloku (255 - numer bloku)
-                dane (128 bajtów)
-                CRC (2 bajty)
-            '''
-            crc = calculate_crc(blockFromFile)
-            block_to_send = [0x01, blockNumber, 255 - blockNumber, blockFromFile, crc]
-            # WYŚLIJ cały blok
-            ser.write(block_to_send)
-            '''
-            ODBIERZ odpowiedź od odbiornika:
-                JEŚLI ACK:
-                    ZWIĘKSZ block_number
-                JEŚLI NAK:
-                    POWTÓRZ wysyłanie bloku
-            '''
-            response = ser.read()
-            if response == 'ACK' or response == 0x06:
-                blockNumber = blockNumber + 1
-            elif response == 'NAK' or response == 0x015:
-                ser.write(block_to_send)
+    while data is not None:  # DOPÓKI są dane do wysłania
+        '''CZYTAJ 128 bajtów z pliku
+        JEŚLI mniej niż 128 bajtów:
+            DOPEŁNIJ bajtami 0x1A (znak EOF) '''
+        blockFromFile, data, blockNumber = divide_to_blocks(data, blockNumber)
+        if len(blockFromFile) < 128:
+            missingLength = 128 - len(blockFromFile)
+            for i in range(missingLength):
+                blockFromFile.append(0x1A)
 
-            '''
-            WYŚLIJ znak EOT (0x04)
-            CZEKAJ na ACK od odbiornika
-            ZAKOŃCZ
-            '''
-        ser.write(0x04)
+        '''POLICZ CRC dla danych
+        UTWÓRZ blok (133 bajty):
+            SOH (0x01)
+            numer bloku
+            dopełnienie numeru bloku (255 - numer bloku)
+            dane (128 bajtów)
+            CRC (2 bajty) '''
+        crc = calculate_crc(blockFromFile)
+        '''0x01 – SOH (Start of Header)
+           [crc >> 8, crc & 0xFF] - rozdzielenie 16-bitowego CRC na dwa bajty'''
+        block_to_send = [0x01, blockNumber, 255 - blockNumber] + blockFromFile + [crc >> 8, crc & 0xFF]
+
+        # WYŚLIJ cały blok
+
+        '''ODBIERZ odpowiedź od odbiornika:
+            JEŚLI ACK:
+                ZWIĘKSZ block_number
+            JEŚLI NAK:
+                POWTÓRZ wysyłanie bloku'''
 
 
-def recive_file(ser):
-    print("Opening 'file_to_recive.txt'")
-    with open("file_to_recive.txt",'a') as file:
-        expectedBlockNumber = 1
-        ser.write(0x43)
-        while True:
-            '''
-             ODBIERZ pierwszy bajt
-    
-            JEŚLI bajt to SOH (0x01):
-            ODCZYTAJ numer bloku
-            ODCZYTAJ dopełnienie numeru bloku
-            JEŚLI numer bloku + dopełnienie != 255:
-                WYŚLIJ NAK
-                KONTYNUUJ'''
-            header = ser.read(1)
-            blockNum=0
-            if header == bytes([SOH]):
-                blockNum = ser.read(1)[0]
-                block_num_comp = ser.read(1)[0]
-                if blockNum != 0xFF - block_num_comp:
-                    print("Nieprawidłowy nagłówek bloku.")
-                    ser.write(bytes([NAK]))
-                    #continue
-                '''
-                ODCZYTAJ 128 bajtów danych
-                ODCZYTAJ CRC (2 bajty)
-                POLICZ CRC z danych
-                JEŚLI CRC się nie zgadza:
-                    WYŚLIJ NAK
-                    KONTYNUUJ'''
-                block=ser.read()
-                readCrc=ser.read(2)[1]
-                calculatedCrc=calculate_crc(block)
-                if readCrc != calculatedCrc:
-                    print("Nieprawidłowy nagłówek bloku.")
-                    ser.write(bytes([NAK]))
-                '''JEŚLI numer bloku == expected_block_number:
-                    ZAPISZ dane do pliku
-                    ZWIĘKSZ expected_block_number
-        
-                WYŚLIJ ACK'''
-                if blockNum==expectedBlockNumber:
-                    print("Saving recived contant into 'file_to_recive.txt'.")
-                    with open("file_to_recive.txt", 'a') as file:
-                        file.write(block)
-                ser.write(0x06)
-            '''JEŚLI bajt to EOT (0x04):
-            WYŚLIJ ACK
-            PRZERWIJ'''
-            if header == bytes([EOT]):
-                ser.write(0x06)
-                break
-                #return None?
-        '''ZAMKNIJ plik'''
-        file.close()
+        '''WYŚLIJ znak EOT (0x04)
+        CZEKAJ na ACK od odbiornika
+        ZAKOŃCZ'''
 
 
+# funkcja odbiornika
+def recive_file():
 
-def divide_to_blocks(data):  # musi zmniejszac data o block
-    blockList = []
-    # blockNumber = blockNumber + 1
-    # return blockList, data, blockNumber
-    '''//podział tekstu na bloki
-        for (int i = 0; i < plainBytes.length; i += 16) {    //iteracja po blokach teksu
-            byte[][] block = new byte[4][4];
-            for (int row = 0; row < 4; row++) {
-                for (int col = 0; col < 4; col++) {
-                    block[row][col] = plainBytes[i + (col * 4) + row];
-                }
-            }
+    # WYSYŁA 'C' lub NAK do nadajnika
+    sum_method = None #wybrana metoda sumy kontrolnej
 
-            blocksList.add(block);      //dodanie nowo stworzonego bloku do listy bloków
-        }
-    '''
-    blockNumber = 0
-    for i in range(0,len(data)):
-        block=np.byte([][128])
-        for j in range(0,128):
-            block[blockNumber][j]=data[j]
-        i=i+128
-        blockNumber=blockNumber+1
-    return blockList
+    '''Odbiera bloki danych i sprawdza:
+           * Numer bloku i jego uzupełnienie
+           * Sumę kontrolną lub CRC'''
+
+    isEOT = False #czy koniec transmisji
+    while isEOT:
+        # Odbiera bloki i przypisuje do recived_block
+        recived_block = []
+        if recived_block[0] != 0x01:
+            return "Błąd: Brak SOH"
+        block_number = recived_block[1]
+        block_complement = recived_block[2]
+        if block_number + block_complement != 0xFF: #musi być równe 255
+            return "Błąd: Nieprawidłowy numer bloku"
+        data = recived_block[3:3 + 128]  #od 3 do 130 bajta mamy dane
+        # Odpowiada ACK jeśli OK, NAK jeśli nie
+        if sum_method == 'C':
+            crc_received = (recived_block[131] << 8) | recived_block[132]  # CRC z bloku (2 bajty) - połączone razem
+            crc_calculated = calculate_crc(data)
+            if crc_received != crc_calculated:
+                return "Błąd: CRC niepoprawne"
+            else:
+                return "OK: Blok poprawny"
+        if sum_method == 'NAK':
+            checksum_received = recived_block[131]
+            checksum_calculated = sum(data) % 256 # od 3 do 130 bajta mamy dane
+            if checksum_received != checksum_calculated:
+                return "Błąd: Suma kontrolna niepoprawna"
+            else:
+                return "OK: Blok poprawny"
+
+    #Po otrzymaniu EOT kończy odbiór
+
+
+# metoda czytająca pojedynczy blok i zwracająca resztę
+def divide_to_blocks(data, blockNumber):
+    block_data = data[:128]
+    remaining_data = data[128:]
+    block_bytes = [ord(ch) for ch in block_data]  # zamiana znaków na bajty
+    return block_bytes, remaining_data, blockNumber + 1
 
 # main:
