@@ -17,13 +17,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="905d6d85-8911-489c-ad19-ad00e2bf18c4" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../zadanie2/crc16.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../zadanie2/crc16.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../zadanie2/github.c" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../zadanie2/github.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../zadanie2/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/../zadanie2/main.py" afterDir="false" />
-    </list>
+    <list default="true" id="905d6d85-8911-489c-ad19-ad00e2bf18c4" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

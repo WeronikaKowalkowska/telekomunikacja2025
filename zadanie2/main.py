@@ -29,7 +29,7 @@ def calculate_checksum(data):
 # funkcja nadajnika
 def send_file(ser):
     print("Opening 'file_to_read.txt'")
-    with open("file_to_read.txt", 'r') as file:
+    with open("file_to_read.txt", 'rb') as file: #encoding='utf-8'
         data = file.read()
 
     blockNumber = 1
@@ -48,11 +48,11 @@ def send_file(ser):
                 DOPEŁNIJ bajtami 0x1A (znak EOF)
             '''
             blockFromFile = []
-            blockFromFile, data, blockNumber = divide_to_blocks(data, blockNumber)
+            blockFromFile, data, = divide_to_blocks(data, blockNumber)
             if len(blockFromFile) < 128:
                 missingLength = 128 - len(blockFromFile)
                 for i in range(missingLength):
-                    blockFromFile.append(0x1A)
+                    blockFromFile.append(bytes([0x1A]))
             '''
             POLICZ CRC dla danych
             UTWÓRZ blok:
@@ -65,12 +65,14 @@ def send_file(ser):
             crc = calculate_crc(blockFromFile)
             #block_to_send = [0x01, blockNumber, 255 - blockNumber, blockFromFile, crc]
             block_to_send = bytearray()
-            block_to_send.append(0x01)
+            block_to_send.append(SOH)
             block_to_send.append(blockNumber)
             block_to_send.append(255 - blockNumber)
-            block_to_send += bytearray(blockFromFile)
-            block_to_send += crc.to_bytes(2, 'big')  # CRC to int, konwertujemy na 2 bajty
-            ser.write(block_to_send)
+            block_data=bytearray(blockFromFile)
+            block_to_send += block_data
+            crc = calculate_crc(block_data)
+            block_to_send += crc.to_bytes(2, 'big')
+
             # WYŚLIJ cały blok
             ser.write(block_to_send)
             '''
@@ -81,9 +83,9 @@ def send_file(ser):
                     POWTÓRZ wysyłanie bloku
             '''
             response = ser.read()
-            if response == 'ACK' or response == 0x06:
+            if response == 'ACK' or response == 0x06 or response == bytes([ACK]):
                 blockNumber = blockNumber + 1
-            elif response == 'NAK' or response == 0x015:
+            elif response == 'NAK' or response == 0x015 or response == bytes([NAK]):
                 ser.write(block_to_send)
 
             '''
@@ -98,7 +100,7 @@ def send_file(ser):
 # funkcja odbiornika
 def receive_file(ser):
     print("Opening 'file_to_recive.txt'")
-    with open("file_to_recive.txt", 'a') as file:
+    with open("file_to_recive.txt", 'wb') as file:
         expectedBlockNumber = 1
         C_sign=bytes([0x43])
         ser.write(C_sign)
@@ -143,7 +145,7 @@ def receive_file(ser):
                 if blockNum == expectedBlockNumber:
                     print("Saving recived contant into 'file_to_recive.txt'.")
                     with open("file_to_recive.txt", 'a') as file:
-                        file.write(block)
+                        file.write(str(block))
                 ser.write(0x06)
             '''JEŚLI bajt to EOT (0x04):
             WYŚLIJ ACK
@@ -166,13 +168,7 @@ def receive_file(ser):
 def divide_to_blocks(data, blockNumber):
     block_data = data[:128]
     remaining_data = data[128:]
-    block_bytes = []
-    for ch in block_data:
-        try:
-            block_bytes.append(ord(ch))
-        except TypeError:
-            print(f"Błąd: {ch} nie jest znakiem.")
-    return block_bytes, remaining_data, blockNumber + 1
+    return block_data, remaining_data
 
 # main:
 port = input("Port szeregowy (np. COM3 / /dev/ttyUSB0): ")
