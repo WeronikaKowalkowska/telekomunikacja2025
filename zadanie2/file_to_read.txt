@@ -1,0 +1,31 @@
+with open(filename, "rb") as f:
+        block_num = 1
+        print("Czekam na inicjację odbiornika...")
+        while True:
+            char = ser.read()
+            if char == b'C':
+                break
+
+        while True:
+            data = f.read(BLOCK_SIZE)
+            if not data:
+                break
+            if len(data) < BLOCK_SIZE:
+                data += bytes([0x1A] * (BLOCK_SIZE - len(data)))
+            crc = calc_crc(data)
+            packet = struct.pack("B", SOH)
+            packet += struct.pack("B", block_num)
+            packet += struct.pack("B", 0xFF - block_num)
+            packet += data
+            packet += struct.pack(">H", crc)
+
+            ser.write(packet)
+            response = ser.read()
+            if response != bytes([ACK]):
+                print("Błąd transmisji, ponawiam blok...")
+                continue
+            block_num = (block_num + 1) % 256
+
+        ser.write(bytes([EOT]))
+        if ser.read() == bytes([ACK]):
+            print("Transmisja zakończona.")
