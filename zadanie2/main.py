@@ -1,6 +1,7 @@
 import numpy as np
 import serial
 import time
+import serial.tools.list_ports
 SOH = 0x01
 EOT = 0x04
 ACK = 0x06
@@ -175,10 +176,55 @@ def divide_to_blocks(data, blockNumber):
     return block_bytes, remaining_data, blockNumber + 1
 
 # main:
-port = input("Port szeregowy (np. COM3 / /dev/ttyUSB0): ")
-ser = serial.Serial(port, 9600)
+# port = input("Port szeregowy (np. COM3 / /dev/ttyUSB0): ")
+# ser = serial.Serial(port, 9600)
+
+# znajdź wszystkie dostępne porty szeregowe
+disconected = True
+
+# konfiguracja RS-232
+CONFIG = {
+    'baudrate': 9600,
+    'bytesize': serial.EIGHTBITS,
+    'parity': serial.PARITY_NONE,
+    'stopbits': serial.STOPBITS_ONE,
+    'timeout': 1,
+    'xonxoff': False,
+    'rtscts': False,
+    'dsrdtr': False
+}
+
+ports = list(serial.tools.list_ports.comports())
+
+if not ports:
+    print("Nie znaleziono żadnych portów szeregowych.")
+    exit()
+
+# wyświetl dostępne porty
+print("Dostępne porty szeregowe:")
+for i, port in enumerate(ports):
+    print(f"{i}: {port.device}")
+
+# wybór portu przez użytkownika
+while True:
+    try:
+        index = int(input("Wybierz numer portu z listy: "))
+        selected_port = ports[index].device
+        break
+    except (ValueError, IndexError):
+        print("Nieprawidłowy wybór, spróbuj ponownie.")
+
+# otwarcie portu
+while disconected:
+    try:
+        ser = serial.Serial(selected_port, 9600)
+        print(f"Połączono z {selected_port}")
+        disconected = False
+    except serial.SerialException as e:
+        print(f"Błąd podczas otwierania portu: {e}")
 
 mode = input("Wpisz 'send' by wysłać lub 'recv' by odebrać plik: ").strip().lower()
+
 #filename = input("Podaj nazwę pliku: ")
 
 if mode == "send":
