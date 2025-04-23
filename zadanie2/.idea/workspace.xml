@@ -17,7 +17,13 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="905d6d85-8911-489c-ad19-ad00e2bf18c4" name="Changes" comment="" />
+    <list default="true" id="905d6d85-8911-489c-ad19-ad00e2bf18c4" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/crc16.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/crc16.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/github.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/github.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -151,7 +157,7 @@
       <workItem from="1745213472792" duration="383000" />
       <workItem from="1745214893448" duration="65000" />
       <workItem from="1745214966754" duration="1280000" />
-      <workItem from="1745216284026" duration="2258000" />
+      <workItem from="1745216284026" duration="2115000" />
     </task>
     <servers />
   </component>
