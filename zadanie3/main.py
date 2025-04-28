@@ -1,64 +1,95 @@
 import heapq
+from collections import Counter
 
-# milo ze link do youtuba w tresci zadania nie dziala ale chociaz dali link do implementacji xD
+''' -------Wstęp teoretyczny dla głupich dziewczynek-------
+ znaki:
+ -> często występujące znaki dostają krótsze kody binarne
+ -> rzadziej występujące znaki dostają dłuższe kody
+ -> w wyniku: zakodowany tekst jest krótszy
+ 
+ drzewo binarne:
+ -> liście - znaki z tekstu (unikatowe symbole użyte w tekście)
+ -> ścieżka od korzenia do liścia - kod binarny dla znaku (0 = lewo, 1 = prawo)
+ -> w wyniku: każdy znak ma unikalną ścieżkę, znaki częstsze są bliżej korzenia, znaki rzadsze są głębiej
+ 
+ ścieżka:
+ -> mówi jak dojść od korzenia drzewa do konkretnego znaku (liścia):
+		-> 0 = przechodzisz w lewo w drzewie
+		-> 1 = przechodzisz w prawo w drzewie
+ węzły:
+ -> każdy znak i jego częstotliwość tworzy osobny węzeł
+'''
 
-# Class to represent huffman tree
+
+# klasa reprezentująca węzeł drzewa Huffmana
 class Node:
 	def __init__(self, x):
-		self.data = x
-		self.left = None
-		self.right = None
+		self.data = x	# przechowuje częstotliwość węzła
+		self.left = None # odnośnik do lewego dziecka w drzewie
+		self.right = None #odnośnik do prawego dziecka w drzewie
 
-	def __lt__(self, other):
+	def __lt__(self, other): # przeciążenia "mniejsze niż", żeby heapq wiedział, jak sortować węzły
 		return self.data < other.data
 
-# Function to traverse tree in preorder
-# manner and push the huffman representation
-# of each character.
-def preOrder(root, ans, curr):
+# funkcja do przechodzenia drzewa w przód (najpierw korzeń, potem lewo, potem prawo)
+# w praktyce: budujemy kod binarny dla każdego znaku
+# kode_list - lista, w której zbieramy gotowe kody Huffmana
+# current_path - aktualna ścieżka w formie stringa, która pokazuje, jakie kroki (0/1) przeszliśmy od korzenia do aktualnego miejsca
+def preOrder(root, code_list, current_path):
+
 	if root is None:
 		return
 
-	# Leaf node represents a character.
+	# jak jesteśmy na liściu, czyli nie ma dzieci, to zapisujemy zakodowaną ścieżkę (curr) -> dodajemy ten kod binarny do listy wynikowej
 	if root.left is None and root.right is None:
-		ans.append(curr)
+		code_list.append(current_path)
 		return
 
-	preOrder(root.left, ans, curr + '0')
-	preOrder(root.right, ans, curr + '1')
+	# jeśli to nie jest liść, to idziemy dalej
+	preOrder(root.left, code_list, current_path + '0')
+	preOrder(root.right, code_list, current_path + '1')
 
-def huffmanCodes(s, freq):
-	# Code here
-	n = len(s)
+# sign_list - lista unikatowych znaków z tekstu
+# freq – lista częstotliwości znaków z sign_list
+def huffmanCodes(sign_list, freq):
 
-	# Min heap for node class.
-	pq = []
+	n = len(sign_list)
+	priority_queue = []
+
+	# dodajemy do kolejki węzły z częstotliwościami
 	for i in range(n):
-		tmp = Node(freq[i])
-		heapq.heappush(pq, tmp)
+		temp = Node(freq[i])
+		heapq.heappush(priority_queue, temp)
 
-	# Construct huffman tree.
-	while len(pq) >= 2:
-		# Left node
-		l = heapq.heappop(pq)
-
-		# Right node
-		r = heapq.heappop(pq)
-
+	# tworzenie drzewa Huffmana
+	while len(priority_queue) >= 2:
+		# pobranie dwóch węzłów (lewy i prawy) o najmniejszych częstotliwościach
+		l = heapq.heappop(priority_queue)
+		r = heapq.heappop(priority_queue)
+		# tworzenie nowego węzła przez łączenie częstotliwości -> powstaje nowa grupa ze wspólnych rodzicem
 		newNode = Node(l.data + r.data)
 		newNode.left = l
 		newNode.right = r
+		# dodanie nowego węzła do kopca
+		heapq.heappush(priority_queue, newNode)
 
-		heapq.heappush(pq, newNode)
-
-	root = heapq.heappop(pq)
-	ans = []
-	preOrder(root, ans, "")
-	return ans
+# kiedy się skończy while to zostanie tylko jeden węzeł root
+	root = heapq.heappop(priority_queue)
+	code_list = []
+	# przechodzimy przez drzewo
+	preOrder(root, code_list, "")
+	return code_list
 
 if __name__ == "__main__":
-	s = "abcdef"
-	freq = [5, 9, 12, 13, 16, 45]
-	ans = huffmanCodes(s, freq)
-	for code in ans:
+	text = "Kocham różowy :)"
+	# zliczanie częstotliwości występowania znaków
+	counter = Counter(text)
+	# wyciągamy znaki i ich częstotliwości osobno
+	sign_list = list(counter.keys())
+	freq = list(counter.values())
+	print("Znaki:", sign_list)
+	print("Częstotliwości:", freq)
+
+	code_list = huffmanCodes(sign_list, freq)
+	for code in code_list:
 		print(code, end=" ")
