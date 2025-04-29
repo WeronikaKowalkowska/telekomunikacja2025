@@ -23,8 +23,9 @@ from collections import Counter
 
 # klasa reprezentująca węzeł drzewa Huffmana
 class Node:
-	def __init__(self, x):
+	def __init__(self, x,  char=None):
 		self.data = x	# przechowuje częstotliwość węzła
+		self.char = char # znak
 		self.left = None # odnośnik do lewego dziecka w drzewie
 		self.right = None #odnośnik do prawego dziecka w drzewie
 
@@ -35,19 +36,19 @@ class Node:
 # w praktyce: budujemy kod binarny dla każdego znaku
 # kode_list - lista, w której zbieramy gotowe kody Huffmana
 # current_path - aktualna ścieżka w formie stringa, która pokazuje, jakie kroki (0/1) przeszliśmy od korzenia do aktualnego miejsca
-def preOrder(root, code_list, current_path):
+def preOrder(root, current_path, code_dick):
 
 	if root is None:
 		return
 
 	# jak jesteśmy na liściu, czyli nie ma dzieci, to zapisujemy zakodowaną ścieżkę (curr) -> dodajemy ten kod binarny do listy wynikowej
 	if root.left is None and root.right is None:
-		code_list.append(current_path)
+		code_dick[root.char] = current_path
 		return
 
 	# jeśli to nie jest liść, to idziemy dalej
-	preOrder(root.left, code_list, current_path + '0')
-	preOrder(root.right, code_list, current_path + '1')
+	preOrder(root.left, current_path + '0', code_dick)
+	preOrder(root.right, current_path + '1', code_dick)
 
 # sign_list - lista unikatowych znaków z tekstu
 # freq – lista częstotliwości znaków z sign_list
@@ -58,7 +59,7 @@ def huffmanCodes(sign_list, freq):
 
 	# dodajemy do kolejki węzły z częstotliwościami
 	for i in range(n):
-		temp = Node(freq[i])
+		temp = Node(freq[i], sign_list[i])
 		heapq.heappush(priority_queue, temp)
 
 	# tworzenie drzewa Huffmana
@@ -75,10 +76,24 @@ def huffmanCodes(sign_list, freq):
 
 # kiedy się skończy while to zostanie tylko jeden węzeł root
 	root = heapq.heappop(priority_queue)
-	code_list = []
+	code_dict={}
 	# przechodzimy przez drzewo
-	preOrder(root, code_list, "")
-	return code_list
+	preOrder(root, "", code_dict)
+	return code_dict, root
+
+def huffmanDecode(root, encoded_str):
+	decoded = ""	# zmienna na odkodowany ciąg znaków
+	current = root
+	for bit in encoded_str:
+		if bit == '0':
+			current = current.left
+		else:
+			current = current.right
+
+		if current.char is not None:  # dotarliśmy do liścia
+			decoded += current.char
+			current = root
+	return decoded
 
 if __name__ == "__main__":
 	text = "Kocham różowy :)"
@@ -90,6 +105,11 @@ if __name__ == "__main__":
 	print("Znaki:", sign_list)
 	print("Częstotliwości:", freq)
 
-	code_list = huffmanCodes(sign_list, freq)
-	for code in code_list:
-		print(code, end=" ")
+	code_dict, root = huffmanCodes(sign_list, freq)
+
+	encoded = ''.join(code_dict[ch] for ch in text)
+	print("\nZakodowany tekst:", encoded)
+
+	# dekodowanie tekstu
+	decoded = huffmanDecode(root, encoded)
+	print("\nOdkodowany tekst:", decoded)
