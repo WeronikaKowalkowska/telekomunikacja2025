@@ -1,4 +1,5 @@
 import heapq
+import json
 import socket
 from collections import Counter
 
@@ -83,18 +84,18 @@ def huffmanCodes(sign_list, freq):
     return code_dict, root
 
 
-def huffmanDecode(root, encoded_str):
-    decoded = ""  # zmienna na odkodowany ciąg znaków
-    current = root
-    for bit in encoded_str:
-        if bit == '0':
-            current = current.left
-        else:
-            current = current.right
+def decode_with_dict(encoded, code_dict):
+    reverse_dict = {}
+    for k, v in code_dict.items():  # odwracamy słownik: binarny kod -> znak
+        reverse_dict[v] = k
+    decoded = ""  # wynikowy, odkodowany tekst
+    buffer = ""  # przechowuje bieżący ciąg bitów, które są sprawdzane, czy pasują do jakiegoś kodu ze słownika
 
-        if current.char is not None:  # dotarliśmy do liścia
-            decoded += current.char
-            current = root
+    for bit in encoded:
+        buffer += bit
+        if buffer in reverse_dict:
+            decoded += reverse_dict[buffer]
+            buffer = ""
     return decoded
 
 
@@ -107,29 +108,48 @@ def start_server(port=12345):
     server_socket.listen(1)  # ustawia gniazdo w tryb nasłuchiwania (przy jednym połączeniu jednocześnie)
     print(f"[Serwer] Nasłuchiwanie na porcie {port}...")
 
-    conn, addr = server_socket.accept() # akceptuje połączenie od klienta: conn - nowe gniazdo do komunikacji z klientem, addr - adres klienta
+    conn, addr = server_socket.accept()  # akceptuje połączenie od klienta: conn - nowe gniazdo do komunikacji z klientem, addr - adres klienta
     print(f"[Serwer] Połączono z: {addr}")
 
-    while True:
-        data = conn.recv(1024) # odbiera po 1024 bajtów naraz
-        if not data:
-            break
-        print("[Serwer] Odebrano:", data.decode()) # wypisuje odebraną wiadomość (po dekodowaniu z bajtów na tekst)
-        conn.sendall(b"OK - odebrano")
+    data = conn.recv(8192)
+    if data:
+        decoded_json = json.loads(data.decode())
+        encoded = decoded_json["encoded"]
+        code_dict = decoded_json["code_dict"]
 
-    conn.close() # zamyka połączenie z klientem
-    server_socket.close() #  zamyka całe gniazdo serwera
+        print("[Serwer] Zakodowany tekst:", encoded)
+        print("[Serwer] Słownik kodów:", code_dict)
+
+        decoded_text = decode_with_dict(encoded, code_dict)
+        print("[Serwer] Odkodowany tekst:", decoded_text)
+
+        conn.sendall(b"OK - tekst odkodowany")
+
+    conn.close()  # zamyka połączenie z klientem
+    server_socket.close()  # zamyka całe gniazdo serwera
 
 
-def connect_to_server(server_ip, port=12345, message="Hello!"):
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # tworzenie nowego gniazda sieciowego: AF_INET - IPv4, SOCK_STREAM - TCP
-    client_socket.connect((server_ip, port)) # wiąże gniazdo z adresem IP serwera i portem
+def connect_to_server(server_ip, port=12345, encoded="", code_dict=None):
+    try:
+        client_socket = socket.socket(socket.AF_INET,
+                                      socket.SOCK_STREAM)  # tworzenie nowego gniazda sieciowego: AF_INET - IPv4, SOCK_STREAM - TCP
+        client_socket.connect((server_ip, port))  # wiąże gniazdo z adresem IP serwera i portem
 
-    client_socket.sendall(message.encode())  # wysyła wiadomość do serwera zamieniając tekst na bajty
-    response = client_socket.recv(1024) # odbiera odpowiedź z serwera (do 1024 bajtów)
-    print("[Klient] Odpowiedź serwera:", response.decode()) # wypisuje odpowiedź jest w formie tekstu
+        # pakujemy dane do JSON-a
+        data_to_send = {
+            "encoded": encoded,
+            "code_dict": code_dict
+        }
+        json_str = json.dumps(data_to_send)
+        client_socket.sendall(json_str.encode())  # wysyła wiadomość do serwera zamieniając tekst na bajty
 
-    client_socket.close() # zamyka połączenie z serwerem
+        response = client_socket.recv(1024)  # odbiera odpowiedź z serwera (do 1024 bajtów)
+        print("[Klient] Odpowiedź serwera:", response.decode())  # wypisuje odpowiedź jest w formie tekstu
+
+        client_socket.close()  # zamyka połączenie z serwerem
+    except Exception as e:
+        print("[Klient] Błąd połączenia:", e)
+
 
 def prep_text_to_send(text):
     # zliczanie częstotliwości występowania znaków
@@ -144,14 +164,20 @@ def prep_text_to_send(text):
     print("\nZakodowany tekst:", encoded)
     return root, encoded
 
-def get_text(root, encoded):
-    decoded = huffmanDecode(root, encoded)
-    print("\nOdkodowany tekst:", decoded)
-    return decoded
-
 
 if __name__ == "__main__":
-    root, encoded = prep_text_to_send("Kocham różowy :)")
-    get_text(root, encoded)
-
-    #connect_to_server("192.168.X.X", 12345, text)
+    wybor = True
+    while wybor:
+        strona = input("Wybierz stronę w komunikacji: a) nadawca b) odbiorca:  ").lower()
+        if strona == "a" or strona == "b":
+            wybor = False
+        else:
+            print("Nieprawidłowy wybór, wpisz 'a' albo 'b'")
+        if strona == "a":
+            text = input("Podaj tekst do przesłania: ")
+            root, encoded = prep_text_to_send(text)
+            server_ip = input("Podaj IP serwera (np. 127.0.0.1): ")
+            code_dict, _ = huffmanCodes(list(Counter(text).keys()), list(Counter(text).values()))
+            connect_to_server(server_ip=server_ip, port=12345, encoded=encoded, code_dict=code_dict)
+        if strona == "b":
+            start_server(port=12345)
