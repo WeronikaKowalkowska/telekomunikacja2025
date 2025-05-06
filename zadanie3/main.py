@@ -3,25 +3,6 @@ import json
 import socket
 from collections import Counter
 
-''' -------Wstęp teoretyczny dla głupich dziewczynek-------
- znaki:
- -> często występujące znaki dostają krótsze kody binarne
- -> rzadziej występujące znaki dostają dłuższe kody
- -> w wyniku: zakodowany tekst jest krótszy
- 
- drzewo binarne:
- -> liście - znaki z tekstu (unikatowe symbole użyte w tekście)
- -> ścieżka od korzenia do liścia - kod binarny dla znaku (0 = lewo, 1 = prawo)
- -> w wyniku: każdy znak ma unikalną ścieżkę, znaki częstsze są bliżej korzenia, znaki rzadsze są głębiej
- 
- ścieżka:
- -> mówi jak dojść od korzenia drzewa do konkretnego znaku (liścia):
-		-> 0 = przechodzisz w lewo w drzewie
-		-> 1 = przechodzisz w prawo w drzewie
- węzły:
- -> każdy znak i jego częstotliwość tworzy osobny węzeł
-'''
-
 
 # klasa reprezentująca węzeł drzewa Huffmana
 class Node:
@@ -124,6 +105,11 @@ def start_server(port=12345):
         print("[Serwer] Odkodowany tekst:", decoded_text)
 
         conn.sendall(b"OK - tekst odkodowany")
+
+        with open("plik.txt", "w", encoding="utf-8") as plik:
+            plik.write(decoded_text)
+        print("Zapisano otzrymany tekst do pliku.")
+
 
     conn.close()  # zamyka połączenie z klientem
     server_socket.close()  # zamyka całe gniazdo serwera
