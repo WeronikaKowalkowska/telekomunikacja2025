@@ -5,6 +5,7 @@ from pathlib import Path
 import sounddevice as sd
 import numpy as np
 from scipy.io.wavfile import write, read
+from scipy.signal import resample
 
 
 # funkcja nagrywa dźwięk z mikrofonu, dokonuje jego kwantyzacji i zapisuje do pliku .wav (A/C)
@@ -37,30 +38,52 @@ def record_audio(czas_nagrania=3, czestotliwosc_probkowania=44100, bity_kwantyza
     print(f"Saved to {file_path}")
     return audio, audio_int
 
+
 # funkcja odtwarza plik dźwiękowy .wav za pomocą karty dźwiękowej (C/A)
 def play_audio(filename):
     print(f"Playing {filename}...")
-    czestotliwosc_probkowania, data = read(filename) # data - tablica z danymi audio
+    czestotliwosc_probkowania, data = read(filename)  # data - tablica z danymi audio
     sd.play(data, czestotliwosc_probkowania)
     sd.wait()
 
-# funkcja oblicza współczynnika SNR (jak bardzo zniekształcony jest sygnał względem oryginału)
+
+# funkcja oblicza współczynnika SNR (jak bardzo zniekształcony jest sygnał względem oryginału) - wyższe SNR oznacza lepszą jakość dźwięku
 def calculate_snr(original, test):
     noise = original - test
-    signal_power = np.sum(original ** 2) # moc sygnału jako suma kwadratów wartości sygnału
-    noise_power = np.sum(noise ** 2) # moc szumu jako suma kwadraty błędów
-    return 10 * np.log10(signal_power / noise_power) # wartość SNR w decybelach (im większe SNR, tym lepsza jakość dźwięku)
+    signal_power = np.sum(original ** 2)  # moc sygnału jako suma kwadratów wartości sygnału
+    noise_power = np.sum(noise ** 2)  # moc szumu jako suma kwadraty błędów
+    return 10 * np.log10(
+        signal_power / noise_power)  # wartość SNR w decybelach (im większe SNR, tym lepsza jakość dźwięku)
+
 
 while True:
-    wybor = input("Choose a converter: a) A/C b) C/A\nOr if you want to test different combinations of sampling rates and bit depth press c): ").lower()
+    wybor = input(
+        "Choose a converter: a) A/C b) C/A\nOr if you want to test different combinations of sampling rates and bit depth press c): ").lower()
     if wybor == "a" or wybor == "b" or wybor == "c":
         break
     else:
         raise ValueError("Unsupported converter, choose 'a', 'b' or 'c'.")
 
 
-def przeksztalc_sygnal(oryginal, czestotliwosc, bit):
-    pass
+def convert_signal(sygnal, nowa_czestotliwosc, nowe_bity):
+    czestotliwosc_sygnalu = 96000
+
+    nowa_liczba_probek = int(len(sygnal) * nowa_czestotliwosc / czestotliwosc_sygnalu)
+    sygnal_nowy = resample(sygnal, nowa_liczba_probek)
+
+    max = np.max(np.abs(sygnal_nowy))
+    if max == 0:
+        return sygnal_nowy
+
+    sygnal_nowy_normalizowany = sygnal_nowy / max
+
+    poziomy_kwantyzacji = 2 ** nowe_bity
+    sygnal_nowy_kwantyzowany = np.round((sygnal_nowy_normalizowany + 1) / 2 * (poziomy_kwantyzacji - 1))
+    sygnal_nowy_kwantyzowany = sygnal_nowy_kwantyzowany / (poziomy_kwantyzacji - 1) * 2 - 1
+
+    sygnal_koncowy = sygnal_nowy_kwantyzowany * max
+
+    return sygnal_koncowy.astype(np.float32)
 
 
 if wybor == "a":
@@ -76,7 +99,7 @@ if wybor == "a":
             raise ValueError("Unsupported recording duration, choose '3' or '5'.")
     while True:
         czestotliwosc_probkowania = int(input("Choose a sampling rate (Hz): 8000, 22050, 44100, or 96000  "))
-        if czestotliwosc_probkowania in [8000, 22050, 44100, 96000 ]:
+        if czestotliwosc_probkowania in [8000, 22050, 44100, 96000]:
             break
         else:
             raise ValueError("Unsupported sampling rate, choose '8000', '22050', '44100', or '96000'.")
@@ -101,7 +124,8 @@ elif wybor == "b":
             for i, file in enumerate(lista_plikow):
                 print(f"{i + 1}. {file.name}")
 
-            index = int(input("Enter the number of the file to select: ")) - 1 # numeracja listy od zera, dlatego odejmujemy zera
+            index = int(input(
+                "Enter the number of the file to select: ")) - 1  # numeracja listy od zera, dlatego odejmujemy zera
             if not index < 0 or index >= len(lista_plikow):
                 wybrany_plik = lista_plikow[index]
                 print(f"You selected: {wybrany_plik}")
@@ -120,14 +144,14 @@ elif wybor == "c":
     wyniki = []
     for czestotliwosc in czestotliwosci_probkowania:
         for bit in bity_kwantyzacji:
-            # TU DOPISAĆ FUNKCJĘ przeksztalc_sygnal
-            po_kwantyzacji = przeksztalc_sygnal(oryginal, czestotliwosc, bit)
-            wyniki.append((czestotliwosc, bit, "temp.wav", oryginal, po_kwantyzacji))
+            filename = f"rec_{czestotliwosc}Hz_{bit}bit.wav"
+            po_kwantyzacji = convert_signal(oryginal, czestotliwosc, bit)
+            wyniki.append((czestotliwosc, bit, "filename", oryginal, po_kwantyzacji))
 
     # SNR względem najlepszego nagrania
     najlepsze_nagranie = None
     for wynik in wyniki:
-        if wynik[0] == 96000 and wynik[1] == 16: # o częstotliwości próbkowania 96000 i 16 bitach kwantyzacji
+        if wynik[0] == 96000 and wynik[1] == 16:  # o częstotliwości próbkowania 96000 i 16 bitach kwantyzacji
             najlepsze_nagranie = wynik
             break
     najlepszy_syngal = najlepsze_nagranie[3].flatten()
