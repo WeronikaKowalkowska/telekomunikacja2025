@@ -55,6 +55,35 @@ def calculate_snr(original, test):
     return 10 * np.log10(
         signal_power / noise_power)  # wartość SNR w decybelach (im większe SNR, tym lepsza jakość dźwięku)
 
+def convert_signal(sygnal, nowa_czestotliwosc, nowe_bity):
+    czestotliwosc_sygnalu = 96000
+
+    # ZMIANA CZĘSTOTLIWOŚCI PRÓBKOWANIA
+    # len(sygnal) - liczba próbek w oryginalnym sygnale
+    # nowa_czestotliwosc / czestotliwosc_sygnalu - proporcja między nową i starą częstotliwością próbkowania
+    nowa_liczba_probek = int(len(sygnal) * nowa_czestotliwosc / czestotliwosc_sygnalu)
+    sygnal_nowy = resample(sygnal, nowa_liczba_probek)
+
+    max = np.max(np.abs(sygnal_nowy)) # największa bezwzględna wartość sygnału
+    if max == 0:    # czyli cisza -> zwracamy od razu (by nie dzielić przez 0)
+        return sygnal_nowy
+
+    # NORMALIZACJA amplitudy do przedziału [-1, 1]
+    sygnal_nowy_normalizowany = sygnal_nowy / max
+
+    # KWANTYZACJA
+    if nowe_bity == 8:
+        sygnal_nowy_kwant = np.clip((sygnal_nowy_normalizowany * 127.5 + 127.5), 0, 255).astype(
+            np.uint8)  # przesuwa i skaluje dźwięk z [-1.0, 1.0] do [0,255]
+        sygnal_koncowy = (sygnal_nowy_kwant.astype(np.float32) - 127.5) / 127.5
+    elif nowe_bity == 16:
+        sygnal_nowy_kwant = np.clip(sygnal_nowy_normalizowany * 32767, -32768, 32767).astype(
+            np.int16)  # skaluje dźwięk z [-1.0, 1.0] do [-32768, 32767], skaluje się do 32767, żeby uniknąć przepełnienia int16
+        sygnal_koncowy = sygnal_nowy_kwant.astype(np.float32) / 32767
+    else:
+        raise ValueError("Unsupported bit depth")
+
+    return sygnal_koncowy.astype(np.float32)
 
 while True:
     wybor = input(
@@ -63,28 +92,6 @@ while True:
         break
     else:
         raise ValueError("Unsupported converter, choose 'a', 'b' or 'c'.")
-
-
-def convert_signal(sygnal, nowa_czestotliwosc, nowe_bity):
-    czestotliwosc_sygnalu = 96000
-
-    nowa_liczba_probek = int(len(sygnal) * nowa_czestotliwosc / czestotliwosc_sygnalu)
-    sygnal_nowy = resample(sygnal, nowa_liczba_probek)
-
-    max = np.max(np.abs(sygnal_nowy))
-    if max == 0:
-        return sygnal_nowy
-
-    sygnal_nowy_normalizowany = sygnal_nowy / max
-
-    poziomy_kwantyzacji = 2 ** nowe_bity
-    sygnal_nowy_kwantyzowany = np.round((sygnal_nowy_normalizowany + 1) / 2 * (poziomy_kwantyzacji - 1))
-    sygnal_nowy_kwantyzowany = sygnal_nowy_kwantyzowany / (poziomy_kwantyzacji - 1) * 2 - 1
-
-    sygnal_koncowy = sygnal_nowy_kwantyzowany * max
-
-    return sygnal_koncowy.astype(np.float32)
-
 
 if wybor == "a":
     print("You can now record sound from a microphone. The program will quantize it and save it to a file.")
@@ -139,28 +146,27 @@ elif wybor == "c":
     czas_nagrania = 3
 
     # nagranie raz, w najwyższej jakości
-    oryginal, _ = record_audio(czas_nagrania, 96000, 16, "temp.wav")
+    oryginal, _ = record_audio(czas_nagrania, 96000, 16, "test.wav")
+
+    play_audio("files/test.wav")
 
     wyniki = []
+    najlepsze_nagranie = None
+
     for czestotliwosc in czestotliwosci_probkowania:
         for bit in bity_kwantyzacji:
-            filename = f"rec_{czestotliwosc}Hz_{bit}bit.wav"
             po_kwantyzacji = convert_signal(oryginal, czestotliwosc, bit)
-            wyniki.append((czestotliwosc, bit, "filename", oryginal, po_kwantyzacji))
+            if czestotliwosc == 96000 and bit == 16:
+                najlepsze_nagranie = po_kwantyzacji.flatten()
+            wyniki.append((czestotliwosc, bit, "test.wav", po_kwantyzacji))
 
     # SNR względem najlepszego nagrania
-    najlepsze_nagranie = None
-    for wynik in wyniki:
-        if wynik[0] == 96000 and wynik[1] == 16:  # o częstotliwości próbkowania 96000 i 16 bitach kwantyzacji
-            najlepsze_nagranie = wynik
-            break
-    najlepszy_syngal = najlepsze_nagranie[3].flatten()
-
     print("\nSNR results:")
-    for czestotliwosc, bit, filename, oryginal, po_kwantyzacji in wyniki:
+    for czestotliwosc, bit, filename, po_kwantyzacji in wyniki:
         try:
-            najlepszy_dopasowany_dlugoscia = najlepszy_syngal[:len(po_kwantyzacji.flatten())]
-            snr = calculate_snr(najlepszy_dopasowany_dlugoscia, po_kwantyzacji.flatten())
+            # resamplowanie najlepszego sygnału do porównywanej długości
+            najlepszy_dopasowany = resample(najlepsze_nagranie, len(po_kwantyzacji.flatten()))
+            snr = calculate_snr(najlepszy_dopasowany, po_kwantyzacji.flatten())
             print(f"{czestotliwosc}Hz, {bit}-bit: SNR = {snr:.2f} dB")
         except Exception as e:
             print(f"Błąd dla {filename}: {e}")
